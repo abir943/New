@@ -17,7 +17,7 @@
     "PASSWORD": "",
     "OTPKEY": "",
     "BOTNAME": "MIRAI-BOT-LOVER",
-    "PREFIX": "/",
+    "PREFIX": "#",
     "ADMINBOT": [
         "100071880593545"
     ],
