@@ -1,144 +1,89 @@
-const fancyLine = "⚘⊶───────────────────⚭";
-
-const gifList = [
-  "https://i.imgur.com/m7DFUwQ.gif",
-  "https://i.postimg.cc/kGXFhs6z/image.gif",
-  "https://i.postimg.cc/pXs1xhPK/9f86d35a-a401-4f8e-805e-0183141183fd.gif",
-  "https://i.postimg.cc/tgZcBqQW/image.gif",
-  "https://i.postimg.cc/HLRqmJ46/image.gif",
-  "https://i.postimg.cc/HWXgptNX/alteredcarbon-cyberpunk-cyberpunkcity-dystopia-futureworld.gif",
-  "https://i.postimg.cc/4dhTHvxC/Cyberpunk-Aesthetic.gif",
-  "https://i.postimg.cc/zG5XmQXy/ILLNESS-Lee-haechan.gif",
-  "https://i.imgur.com/qPKituS.gif",
-  "https://i.postimg.cc/4dyDk697/image.gif",
-  "https://i.postimg.cc/dQpYFxnq/Kiseki-ga-okoru-basho.gif",
-  "https://i.postimg.cc/sDG3Zr1Q/image.gif",
-  "https://i.postimg.cc/L5NgYMs0/Hina-Amano-Weathering-With-You-GIF-Hina-Amano-Weathering-With-You-Animation-Discover-Share-GIF.gif",
-  "https://i.imgur.com/w0tJWab.gif",
-  "https://i.imgur.com/V3mHeJW.gif",
-  "https://i.imgur.com/d4zLX9L.gif"
-];
-
-function getRandomGif() {
-  const url = gifList[Math.floor(Math.random() * gifList.length)];
-  return {
-    body: "",
-    attachment: require("request")(url)
-  };
-}
-
 module.exports.config = {
-  name: "help",
-  version: "1.0.4",
-  hasPermssion: 0,
-  credits: "Aminul Sordar",
-  description: "Show available commands with usage details",
-  commandCategory: "system",
-  usages: "[command name | page number]",
-  cooldowns: 5,
-  envConfig: {
-    autoUnsend: false,
-    delayUnsend: 240
-  }
+	name: "help",
+	version: "1.0.2",
+	hasPermssion: 0,
+	credits: "Aminulsordar",
+	description: "show available command",
+	commandCategory: "system",
+	usages: "Command List",
+	cooldowns: 5,
+	envConfig: {
+		autoUnsend: false,
+		delayUnsend: 50
+	}
 };
 
 module.exports.languages = {
-  en: {
-    moduleInfo: "🔹 Name: 「 %1 」\n📄 Description: %2\n🛠 Usage: %3\n📁 Category: %4\n⏳ Cooldown: %5s\n🔑 Permission: %6\n👑 Credits: %7",
-    helpList: '[ There are %1 commands. Use: "%2help commandName" for usage details. ]',
-    user: "User",
-    adminGroup: "Admin (Group)",
-    adminBot: "Admin (Bot)"
-  }
+	"en": {
+		"moduleInfo": "「 %1 」\n%2\n\n❯ Usage: %3\n❯ Category: %4\n❯ Waiting time: %5 seconds(s)\n❯ Permission: %6\n\n» Module code by %7 «",
+		"helpList": '[ There are %1 commands on this bot, Use: "%2help nameCommand" to know how to use! ]',
+		"user": "User",
+				"adminGroup": "Admin group",
+				"adminBot": "Admin bot"
+	}
 };
 
-module.exports.handleEvent = async function ({ api, event, getText }) {
-  const { commands } = global.client;
-  const { threadID, messageID, body } = event;
-  if (!body?.toLowerCase().startsWith("help ")) return;
+module.exports.handleEvent = function ({ api, event, getText }) {
+	const { commands } = global.client;
+	const { threadID, messageID, body } = event;
 
-  const args = body.split(/\s+/);
-  const cmdName = args[1]?.toLowerCase();
-  if (!commands.has(cmdName)) return;
+	if (!body || typeof body == "undefined" || body.indexOf("help") != 0) return;
+	const splitBody = body.slice(body.indexOf("help")).trim().split(/\s+/);
+	if (splitBody.length == 1 || !commands.has(splitBody[1].toLowerCase())) return;
+	const threadSetting = global.data.threadData.get(parseInt(threadID)) || {};
+	const command = commands.get(splitBody[1].toLowerCase());
+	const prefix = (threadSetting.hasOwnProperty("PREFIX")) ? threadSetting.PREFIX : global.config.PREFIX;
+	return api.sendMessage(getText("moduleInfo", command.config.name, command.config.description, `${prefix}${command.config.name} ${(command.config.usages) ? command.config.usages : ""}`, command.config.commandCategory, command.config.cooldowns, ((command.config.hasPermssion == 0) ? getText("user") : (command.config.hasPermssion == 1) ? getText("adminGroup") : getText("adminBot")), command.config.credits), threadID, messageID);
+}
 
-  const threadSetting = global.data.threadData.get(parseInt(threadID)) || {};
-  const prefix = threadSetting.PREFIX || global.config.PREFIX;
-  const command = commands.get(cmdName);
+module.exports. run = function({ api, event, args, getText }) {
+	const { commands } = global.client;
+	const { threadID, messageID } = event;
+	const command = commands.get((args[0] || "").toLowerCase());
+	const threadSetting = global.data.threadData.get(parseInt(threadID)) || {};
+	const { autoUnsend, delayUnsend } = global.configModule[this.config.name];
+	const prefix = (threadSetting.hasOwnProperty("PREFIX")) ? threadSetting.PREFIX : global.config.PREFIX;
 
-  const msg = getText("moduleInfo",
-    command.config.name,
-    command.config.description || "No description",
-    `${prefix}${command.config.name} ${(command.config.usages || "")}`,
-    command.config.commandCategory || "Uncategorized",
-    command.config.cooldowns || 5,
-    command.config.hasPermssion === 0
-      ? getText("user")
-      : command.config.hasPermssion === 1
-        ? getText("adminGroup")
-        : getText("adminBot"),
-    command.config.credits || "Unknown"
-  );
+	if (!command) {
+		const arrayInfo = [];
+		const page = parseInt(args[0]) || 1;
+		const numberOfOnePage = 15;
+		let i = 0;
+		let msg = "😊!!-> 𝗔𝗦𝗦𝗔𝗟𝗔-𝗠𝗨𝗔𝗟𝗔𝗜𝗞𝗨𝗠 <-!!🥰\n⚘⊶───────────────────⚭\n˚ · .˚ · . ❀ 𝗖𝗢𝗠𝗠𝗔𝗡𝗗 𝗟𝗜𝗦𝗧 ❀ ˚ · .˚ · .\n\n┌────────────────────❍\n";
 
-  return api.sendMessage({ body: msg, attachment: getRandomGif().attachment }, threadID, messageID);
-};
+		for (var [name, value] of (commands)) {
+			name += `  𓆩😇𓆪`;
+			arrayInfo.push(name);
+		}
 
-module.exports.run = async function ({ api, event, args, getText }) {
-  const { commands } = global.client;
-  const { threadID, messageID } = event;
-  const threadSetting = global.data.threadData.get(parseInt(threadID)) || {};
-  const { autoUnsend, delayUnsend } = global.configModule[this.config.name];
-  const prefix = threadSetting.PREFIX || global.config.PREFIX;
+		arrayInfo.sort((a, b) => a.data - b.data);
 
-  const input = (args[0] || "").toLowerCase();
-  const command = commands.get(input);
+		const startSlice = numberOfOnePage*page - numberOfOnePage;
+		i = startSlice;
+		const returnArray = arrayInfo.slice(startSlice, startSlice + numberOfOnePage);
 
-  if (command) {
-    const msg = getText("moduleInfo",
-      command.config.name,
-      command.config.description || "No description",
-      `${prefix}${command.config.name} ${(command.config.usages || "")}`,
-      command.config.commandCategory || "Uncategorized",
-      command.config.cooldowns || 5,
-      command.config.hasPermssion === 0
-        ? getText("user")
-        : command.config.hasPermssion === 1
-          ? getText("adminGroup")
-          : getText("adminBot"),
-      command.config.credits || "Unknown"
-    );
-    return api.sendMessage({ body: msg, attachment: getRandomGif().attachment }, threadID, messageID);
-  }
+		for (let item of returnArray) msg += `├⊶〘 ${++i} 〙-${item}\n`;
 
-  // Paginated Help
-  const commandNames = Array.from(commands.keys()).sort();
-  const totalCmds = commandNames.length;
-  const perPage = 15;
-  const page = Math.max(1, parseInt(input)) || 1;
-  const totalPage = Math.ceil(totalCmds / perPage);
-  const start = (page - 1) * perPage;
-  const currentCmds = commandNames.slice(start, start + perPage);
+		const randomText = ["",];
 
-  let msg = "😊!!-> 𝗔𝗦𝗦𝗔𝗟𝗔-𝗠𝗨𝗔𝗟𝗔𝗜𝗞𝗨𝗠 <-!!🥰\n" + fancyLine + "\n❀ 𝗖𝗢𝗠𝗠𝗔𝗡𝗗 𝗟𝗜𝗦𝗧 ❀\n\n";
-
-  currentCmds.forEach((name, idx) => {
-    msg += `├⊶〘 ${start + idx + 1} 〙 - ${name} 𓆩😇𓆪\n`;
-  });
-
-  msg += `└────────────────────❍\n${fancyLine}\n`;
-
-  const footer = `😫!!-> 𝐀𝐌𝐈𝐍𝐔𝐋 𝐒𝐎𝐑𝐃𝐀𝐑 <-!!🥵
+		const text =  `└────────────────────❍\n⚘⊶───────────────────⚭
+😫!!-> 𝐀𝐌𝐈𝐍𝐔𝐋 𝐒𝐎𝐑𝐃𝐀𝐑 <-!!🥵
 😀!!-> 𝗕𝗢𝗧𓆩😇𓆪𝗔𝐌𝐈𝐍𝐔𝐋 𝟭𝟰𝟯 <-!!😘
-┌──❀*̥˚───❀*̥˚─┐
-     PAGE ${page}/${totalPage}
-└───❀*̥˚───❀*̥˚┘
-🧮 TOTAL COMMANDS: ${totalCmds}
-📞 NEED HELP? CONTACT MY ADMIN
-🌐 FB: 𝐀𝐌𝐈𝐍𝐔𝐋 𝐒𝐎𝐑𝐃𝐀𝐑 😗`;
+					┌──❀*̥˚───❀*̥˚─┐
+								 𝗣𝗔𝗚𝗘 ${page}/${Math.ceil(arrayInfo.length/numberOfOnePage)}
+					└───❀*̥˚───❀*̥˚┘
 
-  return api.sendMessage({ body: msg + footer, attachment: getRandomGif().attachment }, threadID, async (err, info) => {
-    if (autoUnsend) {
-      await new Promise(res => setTimeout(res, delayUnsend * 1000));
-      return api.unsendMessage(info.messageID);
-    }
-  });
+𝗧𝗢𝗧𝗔𝗟 𝗖𝗢𝗠𝗠𝗔𝗡𝗗 𝗢𝗡 𝗕𝗢𝗧 - ${arrayInfo.length}
+
+𝗔𝗡𝗬 𝗛𝗘𝗟𝗣 𝗖𝗢𝗡𝗧𝗔𝗖𝗧 𝗠𝗬 𝗔𝗗𝗠𝗜𝗡
+𝗙𝗔𝗖𝗘𝗕𝗢𝗢𝗞 𝗜𝗗  :  𝐀𝐌𝐈𝐍𝐔𝐋 𝐒𝐎𝐑𝐃𝐀𝐑 😗`;
+		return api.sendMessage(msg + "" + text, threadID, async (error, info) => {
+			if (autoUnsend) {
+				await new Promise(resolve => setTimeout(resolve, delayUnsend * 10000));
+				return api.unsendMessage(info.messageID);
+			} else return;
+		});
+	}
+
+	return api.sendMessage(getText("moduleInfo", command.config.name, command.config.description, `${prefix}${command.config.name} ${(command.config.usages) ? command.config.usages : ""}`, command.config.commandCategory, command.config.cooldowns, ((command.config.hasPermssion == 0) ? getText("user") : (command.config.hasPermssion == 1) ? getText("adminGroup") : getText("adminBot")), command.config.credits), threadID, messageID);
 };
